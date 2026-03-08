@@ -1,5 +1,5 @@
 import os
-# TensorFlow'a "Yeni sürümü boşver, benim modelimi Keras 2 sisteminde sorunsuz çalıştır" emrini veriyoruz:
+# Eski modelleri okuyabilmek için sistemi Keras 2'ye zorluyoruz:
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 import streamlit as st
@@ -7,9 +7,22 @@ import numpy as np
 import tensorflow as tf
 import joblib
 from PIL import Image
-
-# İŞTE KRİTİK DÜZELTME BURADA:
 from keras.utils import img_to_array
+
+# =========================
+# KRİTİK YAMA (MONKEY PATCH)
+# =========================
+# Crop modeli Keras 3 ile, diğerleri Keras 2 ile eğitilmiş. 
+# Keras 2 'batch_shape' argümanını tanımadığı için çalışma anında bunu 'batch_input_shape' olarak düzeltiyoruz.
+original_init = tf.keras.layers.InputLayer.__init__
+
+def patched_input_layer_init(self, *args, **kwargs):
+    if 'batch_shape' in kwargs:
+        kwargs['batch_input_shape'] = kwargs.pop('batch_shape')
+    original_init(self, *args, **kwargs)
+
+tf.keras.layers.InputLayer.__init__ = patched_input_layer_init
+# =========================
 
 # =========================
 # SAYFA AYARLARI VE TASARIM
@@ -44,7 +57,7 @@ st.markdown("<h1>🌱 TarımAI</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center;'>Yapay Zeka Destekli Akıllı Tarım Asistanı</p>", unsafe_allow_html=True)
 
 # =========================
-# MODELLERİ YÜKLEME (Güvenli Yükleme Modu)
+# MODELLERİ YÜKLEME
 # =========================
 @st.cache_resource
 def load_models():
