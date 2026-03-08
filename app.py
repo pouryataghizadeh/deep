@@ -7,7 +7,9 @@ import numpy as np
 import tensorflow as tf
 import joblib
 from PIL import Image
-from tensorflow.keras.preprocessing.image import img_to_array
+
+# İŞTE KRİTİK DÜZELTME BURADA:
+from keras.utils import img_to_array
 
 # =========================
 # SAYFA AYARLARI VE TASARIM
