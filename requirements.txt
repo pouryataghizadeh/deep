@@ -1,6 +1,6 @@
-flask
-tensorflow
-numpy
-joblib
+streamlit
+tensorflow-cpu
+numpy<2.0.0
 pillow
-gunicorn
+joblib
+scikit-learn
