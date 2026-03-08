@@ -1,3 +1,7 @@
+import os
+# KRİTİK DÜZELTME: TensorFlow'a eski Keras modellerini (TFOpLambda) okuyabilmesi için talimat veriyoruz
+os.environ["TF_USE_LEGACY_KERAS"] = "1" 
+
 import streamlit as st
 import numpy as np
 import tensorflow as tf
@@ -38,22 +42,24 @@ st.markdown("<h1>🌱 TarımAI</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center;'>Yapay Zeka Destekli Akıllı Tarım Asistanı</p>", unsafe_allow_html=True)
 
 # =========================
-# MODELLERİ YÜKLEME (3 Proje Bir Arada)
+# MODELLERİ YÜKLEME (Güvenli Yükleme Modu)
 # =========================
 @st.cache_resource
 def load_models():
     models = {}
     try:
+        # compile=False EKLEDİK: Çünkü modelleri eğitmeyeceğiz, sadece tahmin için kullanacağız. Bu TFOpLambda hatalarını çözer.
+        
         # 1. Ürün Önerisi Modelleri
-        models['crop'] = tf.keras.models.load_model("crop_model.h5")
+        models['crop'] = tf.keras.models.load_model("crop_model.h5", compile=False)
         models['scaler'] = joblib.load("scaler.pkl")
         models['label_encoder'] = joblib.load("label_encoder.pkl")
         
         # 2. Meyve Hasat Modeli
-        models['fruit'] = tf.keras.models.load_model("meyve_modeli.keras")
+        models['fruit'] = tf.keras.models.load_model("meyve_modeli.keras", compile=False)
         
-        # 3. Pirinç Hastalık Modeli (YENİ)
-        models['rice'] = tf.keras.models.load_model("best_rice_model.h5")
+        # 3. Pirinç Hastalık Modeli
+        models['rice'] = tf.keras.models.load_model("best_rice_model.h5", compile=False)
         
     except Exception as e:
         st.error(f"Modeller yüklenirken hata oluştu: {e}")
@@ -148,7 +154,7 @@ with tab2:
             else:
                 st.warning("Meyve modeli eksik.")
 
-# --- SEKME 3: PİRİNÇ HASTALIK ANALİZİ (YENİ) ---
+# --- SEKME 3: PİRİNÇ HASTALIK ANALİZİ ---
 with tab3:
     st.subheader("AI Botanik Analiz")
     st.write("Gelişmiş Derin Öğrenme modeli ile pirinç yaprağındaki hastalıkları saniyeler içinde tespit edin.")
@@ -163,20 +169,17 @@ with tab3:
             if 'rice' in loaded_resources:
                 with st.spinner('Yapay Zeka İşliyor...'):
                     try:
-                        # Flask kodundaki özel preprocessing mantığı
                         if rice_image.mode != "RGB":
                             rice_image = rice_image.convert("RGB")
                         img_resized = rice_image.resize((224, 224))
                         img_array = img_to_array(img_resized)
                         img_array = np.expand_dims(img_array, axis=0)
 
-                        # Tahmin yap
                         preds = loaded_resources['rice'].predict(img_array)
                         confidence = float(np.max(preds)) * 100
                         predicted_class_idx = np.argmax(preds)
                         predicted_class = rice_class_names[predicted_class_idx]
 
-                        # Sonucu göster
                         if predicted_class == "Healthy Rice Leaf":
                             st.success(f"✨ Sağlıklı Yaprak (Güven Skoru: %{confidence:.2f})")
                         else:
