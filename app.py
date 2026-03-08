@@ -1,28 +1,22 @@
-import os
-# Eski modelleri okuyabilmek için sistemi Keras 2'ye zorluyoruz:
-os.environ["TF_USE_LEGACY_KERAS"] = "1"
-
 import streamlit as st
 import numpy as np
 import tensorflow as tf
+import tf_keras
 import joblib
 from PIL import Image
-from keras.utils import img_to_array
 
 # =========================
-# KRİTİK YAMA (MONKEY PATCH)
+# AKILLI MODEL YÜKLEYİCİ (HİBRİT MOTOR)
 # =========================
-# Crop modeli Keras 3 ile, diğerleri Keras 2 ile eğitilmiş. 
-# Keras 2 'batch_shape' argümanını tanımadığı için çalışma anında bunu 'batch_input_shape' olarak düzeltiyoruz.
-original_init = tf.keras.layers.InputLayer.__init__
-
-def patched_input_layer_init(self, *args, **kwargs):
-    if 'batch_shape' in kwargs:
-        kwargs['batch_input_shape'] = kwargs.pop('batch_shape')
-    original_init(self, *args, **kwargs)
-
-tf.keras.layers.InputLayer.__init__ = patched_input_layer_init
-# =========================
+# Bu fonksiyon modele bakar. Eğer model Keras 3 ise yeni nesil motorla açar,
+# eski nesil ise otomatik olarak Keras 2 (tf_keras) motoruna geçiş yapar.
+def smart_load_model(path):
+    try:
+        # Önce Yeni Nesil Motoru Dene (Keras 3)
+        return tf.keras.models.load_model(path, compile=False)
+    except:
+        # Hata verirse Eski Nesil Motora Geç (Keras 2)
+        return tf_keras.models.load_model(path, compile=False)
 
 # =========================
 # SAYFA AYARLARI VE TASARIM
@@ -31,25 +25,13 @@ st.set_page_config(page_title="TarımAI | Akıllı Tarım Asistanı", page_icon=
 
 st.markdown("""
     <style>
-    .main {
-        background-color: #f8f9fa;
-    }
-    h1 {
-        color: #2ecc71;
-        text-align: center;
-    }
+    .main { background-color: #f8f9fa; }
+    h1 { color: #2ecc71; text-align: center; }
     .stButton>button {
-        background-color: #2ecc71;
-        color: white;
-        border-radius: 8px;
-        width: 100%;
-        padding: 10px;
-        font-weight: 600;
-        letter-spacing: 1px;
+        background-color: #2ecc71; color: white; border-radius: 8px;
+        width: 100%; padding: 10px; font-weight: 600; letter-spacing: 1px;
     }
-    .stButton>button:hover {
-        background-color: #27ae60;
-    }
+    .stButton>button:hover { background-color: #27ae60; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -63,16 +45,13 @@ st.markdown("<p style='text-align: center;'>Yapay Zeka Destekli Akıllı Tarım 
 def load_models():
     models = {}
     try:
-        # 1. Ürün Önerisi Modelleri
-        models['crop'] = tf.keras.models.load_model("crop_model.h5", compile=False)
+        # Akıllı yükleyici ile modelleri güvenle içeri alıyoruz
+        models['crop'] = smart_load_model("crop_model.h5")
         models['scaler'] = joblib.load("scaler.pkl")
         models['label_encoder'] = joblib.load("label_encoder.pkl")
         
-        # 2. Meyve Hasat Modeli
-        models['fruit'] = tf.keras.models.load_model("meyve_modeli.keras", compile=False)
-        
-        # 3. Pirinç Hastalık Modeli
-        models['rice'] = tf.keras.models.load_model("best_rice_model.h5", compile=False)
+        models['fruit'] = smart_load_model("meyve_modeli.keras")
+        models['rice'] = smart_load_model("best_rice_model.h5")
         
     except Exception as e:
         st.error(f"Modeller yüklenirken hata oluştu: {e}")
@@ -89,12 +68,8 @@ fruit_class_names = [
 ]
 
 rice_class_names = [
-    'Bacterial Leaf Blight',
-    'Brown Spot',
-    'Healthy Rice Leaf',
-    'Leaf Blast',
-    'Leaf scald',
-    'Sheath Blight'
+    'Bacterial Leaf Blight', 'Brown Spot', 'Healthy Rice Leaf',
+    'Leaf Blast', 'Leaf scald', 'Sheath Blight'
 ]
 
 # =========================
@@ -105,7 +80,6 @@ tab1, tab2, tab3 = st.tabs(["🌱 Ürün Önerisi", "🍎 Hasat Analizi", "🌾 
 # --- SEKME 1: ÜRÜN ÖNERİSİ ---
 with tab1:
     st.subheader("Toprak Analizi")
-    
     col1, col2 = st.columns(2)
     with col1:
         N = st.number_input("Azot (N)", min_value=0.0, format="%.2f")
@@ -132,7 +106,7 @@ with tab1:
             except Exception as e:
                 st.error(f"Analiz sırasında hata: {e}")
         else:
-            st.warning("Model dosyaları eksik olduğu için tahmin yapılamıyor.")
+            st.warning("Model dosyaları eksik.")
 
 # --- SEKME 2: HASAT ANALİZİ ---
 with tab2:
@@ -150,7 +124,7 @@ with tab2:
                 with st.spinner('Analiz Ediliyor...'):
                     try:
                         img = fruit_image.resize((224, 224))
-                        x = img_to_array(img) / 255.0
+                        x = np.array(img, dtype='float32') / 255.0
                         x = np.expand_dims(x, axis=0)
 
                         preds = loaded_resources['fruit'].predict(x)
@@ -185,7 +159,7 @@ with tab3:
                         if rice_image.mode != "RGB":
                             rice_image = rice_image.convert("RGB")
                         img_resized = rice_image.resize((224, 224))
-                        img_array = img_to_array(img_resized)
+                        img_array = np.array(img_resized, dtype='float32')
                         img_array = np.expand_dims(img_array, axis=0)
 
                         preds = loaded_resources['rice'].predict(img_array)
@@ -201,4 +175,4 @@ with tab3:
                     except Exception as e:
                         st.error(f"Görsel işlenirken hata oluştu: {e}")
             else:
-                st.warning("Pirinç modeli eksik olduğu için analiz yapılamıyor.")
+                st.warning("Pirinç modeli eksik.")
