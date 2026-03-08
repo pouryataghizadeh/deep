@@ -1,7 +1,7 @@
-streamlit
 flask
 tensorflow-cpu
 numpy
 joblib
 pillow
 scikit-learn
+gunicorn
