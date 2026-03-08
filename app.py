@@ -127,6 +127,5 @@ def predict_harvest():
 # SERVER AYARI
 # =========================
 if __name__ == "__main__":
-    # Render PORT çevre değişkenini kullanır, yoksa 10000 varsayılan kalır
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get("PORT", 8501)) # Streamlit varsayılan portu 8501'dir
     app.run(host="0.0.0.0", port=port)
