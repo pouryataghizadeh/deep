@@ -4,3 +4,4 @@ numpy<2.0.0
 pillow
 joblib
 scikit-learn
+tf_keras
