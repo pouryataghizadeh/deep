@@ -4,5 +4,4 @@ tensorflow-cpu
 numpy
 joblib
 pillow
-gunicorn
 scikit-learn
