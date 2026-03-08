@@ -1,3 +1,4 @@
+streamlit
 flask
 tensorflow-cpu
 numpy
