@@ -1,6 +1,6 @@
 import os
-# KRİTİK DÜZELTME: TensorFlow'a eski Keras modellerini (TFOpLambda) okuyabilmesi için talimat veriyoruz
-os.environ["TF_USE_LEGACY_KERAS"] = "1" 
+# TensorFlow'a "Yeni sürümü boşver, benim modelimi Keras 2 sisteminde sorunsuz çalıştır" emrini veriyoruz:
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 import streamlit as st
 import numpy as np
@@ -48,8 +48,6 @@ st.markdown("<p style='text-align: center;'>Yapay Zeka Destekli Akıllı Tarım 
 def load_models():
     models = {}
     try:
-        # compile=False EKLEDİK: Çünkü modelleri eğitmeyeceğiz, sadece tahmin için kullanacağız. Bu TFOpLambda hatalarını çözer.
-        
         # 1. Ürün Önerisi Modelleri
         models['crop'] = tf.keras.models.load_model("crop_model.h5", compile=False)
         models['scaler'] = joblib.load("scaler.pkl")
